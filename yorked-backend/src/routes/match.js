@@ -29,6 +29,7 @@ router.post('/create', async (req, res) => {
                 captainUid: null,
                 players: []
             },
+            players: [creatorUid],
             toss: null,
             innings1: null,
             innings2: null,
@@ -84,7 +85,8 @@ router.post('/:matchId/join', async (req, res) => {
         }
 
         const updateData = {
-            [`${targetTeam}.players`]: [...teamData.players, uid]
+            [`${targetTeam}.players`]: [...teamData.players, uid],
+            'players': [...match.teamA.players, ...match.teamB.players, uid]
         };
 
         // If team was empty, make this user the captain

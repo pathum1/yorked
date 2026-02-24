@@ -71,19 +71,39 @@ class InningsBreakScreen extends ConsumerWidget {
                 
                 const SizedBox(height: 64),
                 
-                FadeInUp(
-                  delay: const Duration(milliseconds: 1000),
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.play_arrow),
-                    label: const Text('START 2ND INNINGS', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
-                      backgroundColor: const Color(0xFF1E88E5),
-                      foregroundColor: Colors.white,
+                Consumer(builder: (context, ref, _) {
+                  final currentUser = ref.watch(authStateProvider).value;
+                  final isCreator = currentUser?.uid == match.creatorId;
+
+                  if (!isCreator) {
+                    return FadeIn(
+                      delay: const Duration(milliseconds: 1000),
+                      child: const Text('WAITING FOR HOST TO START 2ND INNINGS...', style: TextStyle(color: Colors.white54, fontSize: 16, letterSpacing: 2, fontStyle: FontStyle.italic)),
+                    );
+                  }
+
+                  return FadeInUp(
+                    delay: const Duration(milliseconds: 1000),
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.play_arrow),
+                      label: const Text('START 2ND INNINGS', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, letterSpacing: 2)),
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 24),
+                        backgroundColor: const Color(0xFF1E88E5),
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        // Officially start the 2nd innings
+                        await FirebaseFirestore.instance.collection('matches').doc(matchId).update({
+                          'status': 'in_progress'
+                        });
+                        if (context.mounted) {
+                          context.go('/match/$matchId/live');
+                        }
+                      },
                     ),
-                    onPressed: () => context.go('/match/$matchId/intro'), // Or direct to live depending on actual flow
-                  ),
-                )
+                  );
+                }),
               ],
             );
           },

@@ -33,12 +33,31 @@ class _ProfileSetupScreenState extends ConsumerState<ProfileSetupScreen> {
   @override
   void initState() {
     super.initState();
-    // Pre-fill name from Google Auth if available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final user = ref.read(authStateProvider).value;
-      if (user != null && user.displayName != null) {
-        setState(() {
-          _nameController.text = user.displayName!;
+      if (user != null) {
+        if (user.displayName != null && user.displayName!.isNotEmpty) {
+          setState(() => _nameController.text = user.displayName!);
+        }
+        
+        // Try fetching existing profile
+        ref.read(playerProfileProvider.future).then((profile) {
+          if (profile != null && mounted) {
+            setState(() {
+              if (profile.displayName.isNotEmpty) _nameController.text = profile.displayName;
+              selectedAvatar = profile.avatarId.isNotEmpty ? profile.avatarId : 'tiger';
+              selectedRole = profile.role;
+              selectedBowlingStyle = profile.bowlingStyle;
+              
+              tech = profile.batting.technique;
+              pow = profile.batting.power;
+              tim = profile.batting.timing;
+              
+              acc = profile.bowling.accuracy;
+              pac = profile.bowling.pace;
+              varP = profile.bowling.variation;
+            });
+          }
         });
       }
     });

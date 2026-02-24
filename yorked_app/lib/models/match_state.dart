@@ -15,6 +15,8 @@ class MatchState {
   final String? deletedAt;
   final String? deletedBy;
 
+  final List<String> players;
+
   MatchState({
     required this.id,
     required this.status,
@@ -31,6 +33,7 @@ class MatchState {
     this.innings2,
     this.deletedAt,
     this.deletedBy,
+    required this.players,
   });
 
   /// Get the current active innings data
@@ -54,6 +57,10 @@ class MatchState {
       innings2: json['innings2'] != null ? Map<String, dynamic>.from(json['innings2']) : null,
       deletedAt: json['deletedAt'],
       deletedBy: json['deletedBy'],
+      players: List<String>.from(json['players'] ?? [
+        ...(json['teamA']?['players'] ?? []),
+        ...(json['teamB']?['players'] ?? [])
+      ]),
     );
   }
 }

@@ -5,9 +5,9 @@ import '../models/match_state.dart';
 final activeMatchesProvider = StreamProvider.family<List<MatchState>, String>((ref, uid) {
   final db = FirebaseFirestore.instance;
   
-  // Query matches where user is in teamA.players array
+  // Query matches where user is in players array
   return db.collection('matches')
-    .where('teamA.players', arrayContains: uid)
+    .where('players', arrayContains: uid)
     .where('status', isNotEqualTo: 'completed')
     .snapshots()
     .map((snap) {

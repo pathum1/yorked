@@ -205,16 +205,42 @@ class ResolutionService {
         await firestore.updateInningsState(matchId, inningsKey, inningsUpdate);
 
         let nextStatus = match.status;
+        let matchUpdate = {};
+
         if (inningsEnded) {
             if (inningsNumber === 1) {
                 nextStatus = 'innings_break';
                 const teamName = innings.battingTeam === 'A' ? match.teamA.name : match.teamB.name;
                 notifications.notifyInningsBreak(matchId, [...match.teamA.players, ...match.teamB.players], teamName, runs, wickets);
+
+                const nextBattingTeam = innings.bowlingTeam;
+                const nextBowlingTeam = innings.battingTeam;
+                const nextBattingPlayers = nextBattingTeam === 'A' ? match.teamA.players : match.teamB.players;
+                const nextBowlingPlayers = nextBowlingTeam === 'A' ? match.teamA.players : match.teamB.players;
+
+                matchUpdate = {
+                    status: nextStatus,
+                    currentInnings: 2,
+                    innings2: {
+                        battingTeam: nextBattingTeam,
+                        bowlingTeam: nextBowlingTeam,
+                        runs: 0,
+                        wickets: 0,
+                        balls: 0,
+                        overs: 0,
+                        extras: 0,
+                        currentStrikerUid: nextBattingPlayers.length > 0 ? nextBattingPlayers[0] : null,
+                        currentNonStrikerUid: nextBattingPlayers.length > 1 ? nextBattingPlayers[1] : null,
+                        currentBowlerUid: nextBowlingPlayers.length === 1 ? nextBowlingPlayers[0] : null,
+                        pendingBall: null
+                    }
+                };
             } else {
-                nextStatus = 'complete';
+                nextStatus = 'completed';
                 this.finishMatch(match, matchId, runs, wickets, innings);
+                matchUpdate = { status: nextStatus };
             }
-            await firestore.updateMatch(matchId, { status: nextStatus });
+            await firestore.updateMatch(matchId, matchUpdate);
         } else {
             // Notify for next ball
             if (overCompleted) {

@@ -39,8 +39,9 @@ class MatchLiveScreen extends ConsumerWidget {
           // Extract stats from correct innings fields
           final currentScore = innings['runs'] ?? 0;
           final currentWickets = innings['wickets'] ?? 0;
-          final ballsBowled = innings['balls'] ?? 0;
-          final oversBowled = ballsBowled / 6.0;
+          final overCount = (innings['overs'] ?? 0).toInt();
+          final ballsInOver = (innings['balls'] ?? 0).toInt();
+          final oversBowled = overCount + (ballsInOver / 10.0);
 
           final battingTeam = innings['battingTeam'] ?? 'A';
           final bowlingTeam = innings['bowlingTeam'] ?? 'B';
