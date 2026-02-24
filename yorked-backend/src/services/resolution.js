@@ -2,6 +2,7 @@ const firestore = require('./firestore');
 const notifications = require('./notifications');
 const probabilityMatrix = require('../data/probability_matrix');
 const applyModifiers = require('../data/attribute_modifiers');
+const { getCommentary } = require('./commentary');
 
 class ResolutionService {
     async resolveBall(matchId, inningsNumber) {
@@ -69,6 +70,8 @@ class ResolutionService {
             }
         }
 
+        const commentary = getCommentary(delivery, shot, outcome, isWicket);
+
         // Prepare ball result document
         const ballResult = {
             inningsNumber,
@@ -81,6 +84,7 @@ class ResolutionService {
             outcome,
             wicketType,
             runsScored,
+            commentary,
             timestamp: new Date()
         };
 

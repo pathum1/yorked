@@ -39,8 +39,8 @@ router.post('/create', async (req, res) => {
         const matchId = await firestore.createMatch(matchData);
         res.json({ matchId });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Create Match Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -50,8 +50,8 @@ router.get('/:matchId/state', async (req, res) => {
         if (!match) return res.status(404).json({ error: 'Match not found' });
         res.json(match);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Get Match State Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -103,8 +103,8 @@ router.post('/:matchId/join', async (req, res) => {
         await firestore.updateMatch(matchId, updateData);
         res.json({ success: true, teamAssigned: targetTeam });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Join Match Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -136,8 +136,8 @@ router.post('/:matchId/bowl', async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Bowl Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -177,8 +177,8 @@ router.post('/:matchId/bat', async (req, res) => {
 
         res.json(result);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Bat Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -194,8 +194,8 @@ router.post('/resolve-ball', async (req, res) => {
 
         res.json(result);
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Resolve Ball Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 
@@ -225,8 +225,8 @@ router.post('/:matchId/assign-bowler', async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Assign Bowler Error:', err);
+        res.status(500).json({ error: err.message || 'Internal server error' });
     }
 });
 

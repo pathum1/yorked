@@ -13,6 +13,16 @@ class InningsBreakScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Listen for match status changes to auto-navigate non-host players
+    ref.listen(currentMatchProvider(matchId), (previous, next) {
+      final match = next.value;
+      if (match != null && match.status == 'in_progress') {
+        if (context.mounted) {
+          context.go('/match/$matchId/live');
+        }
+      }
+    });
+
     final matchAsync = ref.watch(currentMatchProvider(matchId));
 
     return Scaffold(

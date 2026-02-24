@@ -5,6 +5,7 @@ class BallResultOverlay extends StatelessWidget {
   final String outcome;
   final String delivery;
   final String shot;
+  final String commentary;
   final VoidCallback onDismiss;
 
   const BallResultOverlay({
@@ -12,6 +13,7 @@ class BallResultOverlay extends StatelessWidget {
     required this.outcome,
     required this.delivery,
     required this.shot,
+    required this.commentary,
     required this.onDismiss,
   });
 
@@ -44,67 +46,105 @@ class BallResultOverlay extends StatelessWidget {
       icon = Icons.run_circle;
     }
 
-    // Auto-dismiss after 3 seconds
-    Future.delayed(const Duration(seconds: 3), onDismiss);
+    // Auto-dismiss after 4 seconds to give time to read commentary
+    Future.delayed(const Duration(seconds: 4), onDismiss);
 
-    return Material(
-      color: Colors.black87,
-      child: InkWell(
-        onTap: onDismiss,
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (icon != null)
-                ZoomIn(
-                  duration: const Duration(milliseconds: 500),
-                  child: Icon(icon, size: 80, color: mainColor),
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 120.0, left: 24, right: 24), // Above the action bar
+        child: FadeInUp(
+          duration: const Duration(milliseconds: 300),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onDismiss,
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B).withOpacity(0.95),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: mainColor.withOpacity(0.5), width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: mainColor.withOpacity(0.2),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 10),
+                    )
+                  ],
                 ),
-              const SizedBox(height: 24),
-              ZoomIn(
-                duration: const Duration(milliseconds: 600),
-                child: Text(
-                  mainText,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 72,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 4,
-                    color: mainColor,
-                    shadows: [
-                      Shadow(
-                        color: mainColor.withOpacity(0.5),
-                        blurRadius: 30,
-                        offset: const Offset(0, 0),
-                      )
-                    ]
-                  ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Top Row: Icon and Runs
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (icon != null) ...[
+                          Icon(icon, size: 32, color: mainColor),
+                          const SizedBox(width: 12),
+                        ],
+                        Text(
+                          mainText,
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                            color: mainColor,
+                            shadows: [
+                              Shadow(
+                                color: mainColor.withOpacity(0.5),
+                                blurRadius: 10,
+                                offset: const Offset(0, 0),
+                              )
+                            ]
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 12),
+                    
+                    // Middle Row: Delivery vs Shot
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black26,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(delivery.toUpperCase(), style: const TextStyle(color: Colors.redAccent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 12.0),
+                            child: Text('VS', style: TextStyle(color: Colors.white54, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                          Text(shot.toUpperCase(), style: const TextStyle(color: Colors.blueAccent, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                        ],
+                      ),
+                    ),
+                    
+                    const SizedBox(height: 16),
+                    
+                    // Bottom Row: Commentary
+                    Text(
+                      '"$commentary"',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.white70,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 48),
-              FadeInUp(
-                delay: const Duration(milliseconds: 400),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(30),
-                    border: Border.all(color: Colors.white24),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(delivery.toUpperCase(), style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16.0),
-                        child: Text('VS', style: TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                      Text(shot.toUpperCase(), style: const TextStyle(color: Colors.blueAccent, fontWeight: FontWeight.bold, letterSpacing: 1)),
-                    ],
-                  ),
-                ),
-              )
-            ],
+            ),
           ),
         ),
       ),

@@ -5,13 +5,21 @@ import '../providers/match_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/widgets.dart';
 
-class MatchLiveScreen extends ConsumerWidget {
+class MatchLiveScreen extends ConsumerStatefulWidget {
   final String matchId;
   const MatchLiveScreen({super.key, required this.matchId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final matchAsync = ref.watch(currentMatchProvider(matchId));
+  ConsumerState<MatchLiveScreen> createState() => _MatchLiveScreenState();
+}
+
+class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
+  String? _lastShownBallId;
+  Map<String, dynamic>? _pendingOverlayData;
+
+  @override
+  Widget build(BuildContext context) {
+    final matchAsync = ref.watch(currentMatchProvider(widget.matchId));
     final currentUser = ref.watch(authStateProvider).value;
 
     return Scaffold(
@@ -61,17 +69,44 @@ class MatchLiveScreen extends ConsumerWidget {
           final bowlingCaptain = bowlingTeam == 'A' ? match.teamACaptain : match.teamBCaptain;
           final isBowlingCaptain = currentUser?.uid == bowlingCaptain;
 
-          // Check for match status transitions
-          if (match.status == 'innings_break') {
-            Future.microtask(() => context.go('/match/$matchId/break'));
-          }
-          if (match.status == 'completed') {
-            Future.microtask(() => context.go('/match/$matchId/victory'));
+          // Check for recently resolved ball to show overlay
+          final latestBall = innings['ballsData'] != null && (innings['ballsData'] as List).isNotEmpty 
+              ? (innings['ballsData'] as List).last 
+              : null;
+              
+          if (latestBall != null && 
+              latestBall['id'] != _lastShownBallId && 
+              latestBall['resolvedAt'] != null) {
+            
+            // Defers state update to avoid building during build
+            Future.microtask(() {
+              if (mounted) {
+                setState(() {
+                  _lastShownBallId = latestBall['id'];
+                  _pendingOverlayData = {
+                    'outcome': latestBall['outcome'] ?? 'DOT',
+                    'delivery': latestBall['delivery'] ?? 'BALL',
+                    'shot': latestBall['shot'] ?? 'SWING',
+                    'commentary': latestBall['commentary'] ?? 'No commentary available.',
+                  };
+                });
+              }
+            });
           }
 
-          return SafeArea(
-            child: Column(
-              children: [
+          // Check for match status transitions
+          if (match.status == 'innings_break') {
+            Future.microtask(() => context.go('/match/${widget.matchId}/break'));
+          }
+          if (match.status == 'completed') {
+            Future.microtask(() => context.go('/match/${widget.matchId}/victory'));
+          }
+
+          return Stack(
+            children: [
+              SafeArea(
+                child: Column(
+                  children: [
                 ScoreboardWidget(
                   totalRuns: currentScore,
                   totalWickets: currentWickets,
@@ -171,20 +206,39 @@ class MatchLiveScreen extends ConsumerWidget {
                   ),
                 ),
 
-                // Action Bar
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1E293B),
-                    border: Border(top: BorderSide(color: Colors.white10, width: 2)),
+                  // Action Bar
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1E293B),
+                      border: Border(top: BorderSide(color: Colors.white10, width: 2)),
+                    ),
+                    child: Center(
+                      child: _buildActionButton(context, currentUser?.uid, strikerId, bowlerId, isDeliveryPending, isShotPending, isBowlingCaptain, bowlerId == null, widget.matchId),
+                    ),
                   ),
-                  child: Center(
-                    child: _buildActionButton(context, currentUser?.uid, strikerId, bowlerId, isDeliveryPending, isShotPending, isBowlingCaptain, bowlerId == null, matchId),
-                  ),
-                )
-              ],
+                ],
+              ),
             ),
+              
+              if (_pendingOverlayData != null)
+                Positioned.fill(
+                  child: BallResultOverlay(
+                    outcome: _pendingOverlayData!['outcome']!,
+                    delivery: _pendingOverlayData!['delivery']!,
+                    shot: _pendingOverlayData!['shot']!,
+                    commentary: _pendingOverlayData!['commentary']!,
+                    onDismiss: () {
+                      if (mounted) {
+                        setState(() {
+                          _pendingOverlayData = null;
+                        });
+                      }
+                    },
+                  ),
+                ),
+            ],
           );
         },
       ),

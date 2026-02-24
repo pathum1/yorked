@@ -98,7 +98,7 @@ final _router = GoRouter(
       builder: (context, state) => InningsBreakScreen(matchId: state.pathParameters['id']!),
     ),
     GoRoute(
-      path: '/match/:id/result',
+      path: '/match/:id/victory',
       builder: (context, state) => VictoryScreen(matchId: state.pathParameters['id']!),
     ),
     GoRoute(

@@ -6,17 +6,35 @@ const path = require('path');
 
 
 // Initialize Firebase Admin
+let serviceAccount = null;
+
 try {
-    let serviceAccount = null;
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
-        serviceAccount = require(process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
-    } else {
-        console.warn('No FIREBASE_SERVICE_ACCOUNT_PATH provided, attempting default app credentials.');
+    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+        try {
+            serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+            console.log('Using FIREBASE_SERVICE_ACCOUNT_JSON from environment');
+        } catch (e) {
+            console.error('Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON', e);
+        }
+    } else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {
+        try {
+            // Read the file synchronously to ensure we have the raw JSON string before parsing
+            const fs = require('fs');
+            const rawData = fs.readFileSync(process.env.FIREBASE_SERVICE_ACCOUNT_PATH, 'utf8');
+            serviceAccount = JSON.parse(rawData);
+            console.log('Loaded service account from path:', process.env.FIREBASE_SERVICE_ACCOUNT_PATH);
+        } catch (e) {
+            console.warn(`Could not load service account from ${process.env.FIREBASE_SERVICE_ACCOUNT_PATH}:`, e.message);
+        }
+    }
+
+    if (!serviceAccount) {
+        console.warn('No valid service account found, attempting default app credentials.');
     }
 
     admin.initializeApp({
         credential: serviceAccount ? admin.credential.cert(serviceAccount) : admin.credential.applicationDefault(),
-        projectId: process.env.FIREBASE_PROJECT_ID || 'yorked'
+        projectId: serviceAccount?.project_id || process.env.FIREBASE_PROJECT_ID || 'yorked'
     });
     console.log('Firebase Admin initialized');
 } catch (error) {
