@@ -14,11 +14,41 @@ class MatchLiveScreen extends ConsumerStatefulWidget {
 }
 
 class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
-  String? _lastShownBallId;
+  static String? _globalLastShownBallId;
   Map<String, dynamic>? _pendingOverlayData;
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(currentMatchProvider(widget.matchId), (previous, next) {
+      if (!mounted) return;
+      final match = next.value;
+      if (match == null || match.status == 'deleted') return;
+      
+      final innings = match.currentInningsData;
+      if (innings == null) return;
+      
+      final latestBall = innings['lastBall'];
+      if (latestBall != null && 
+          latestBall['id'] != _globalLastShownBallId && 
+          latestBall['resolvedAt'] != null) {
+        
+        final resolvedTime = DateTime.tryParse(latestBall['resolvedAt']);
+        final isRecent = resolvedTime != null && DateTime.now().toUtc().difference(resolvedTime).inSeconds < 20;
+        
+        setState(() {
+          _globalLastShownBallId = latestBall['id'];
+          if (isRecent) {
+            _pendingOverlayData = {
+              'outcome': latestBall['outcome'] ?? 'DOT',
+              'delivery': latestBall['delivery'] ?? 'BALL',
+              'shot': latestBall['shot'] ?? 'SWING',
+              'commentary': latestBall['commentary'] ?? 'No commentary available.',
+            };
+          }
+        });
+      }
+    });
+
     final matchAsync = ref.watch(currentMatchProvider(widget.matchId));
     final currentUser = ref.watch(authStateProvider).value;
 
@@ -61,6 +91,10 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
           final strikerId = innings['currentStrikerUid'];
           final nonStrikerId = innings['currentNonStrikerUid'];
           final bowlerId = innings['currentBowlerUid'];
+          
+          final batsmenData = innings['batsmen'] ?? {};
+          final strikerConfidence = (strikerId != null && batsmenData[strikerId] != null) ? batsmenData[strikerId]['confidence'] as int? : null;
+          final nonStrikerConfidence = (nonStrikerId != null && batsmenData[nonStrikerId] != null) ? batsmenData[nonStrikerId]['confidence'] as int? : null;
 
           final isDeliveryPending = innings['pendingBall'] == null || innings['pendingBall']?['delivery'] == null;
           final isShotPending = !isDeliveryPending && innings['pendingBall']?['shot'] == null;
@@ -69,31 +103,7 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
           final bowlingCaptain = bowlingTeam == 'A' ? match.teamACaptain : match.teamBCaptain;
           final isBowlingCaptain = currentUser?.uid == bowlingCaptain;
 
-          // Check for recently resolved ball to show overlay
-          final latestBall = innings['ballsData'] != null && (innings['ballsData'] as List).isNotEmpty 
-              ? (innings['ballsData'] as List).last 
-              : null;
-              
-          if (latestBall != null && 
-              latestBall['id'] != _lastShownBallId && 
-              latestBall['resolvedAt'] != null) {
-            
-            // Defers state update to avoid building during build
-            Future.microtask(() {
-              if (mounted) {
-                setState(() {
-                  _lastShownBallId = latestBall['id'];
-                  _pendingOverlayData = {
-                    'outcome': latestBall['outcome'] ?? 'DOT',
-                    'delivery': latestBall['delivery'] ?? 'BALL',
-                    'shot': latestBall['shot'] ?? 'SWING',
-                    'commentary': latestBall['commentary'] ?? 'No commentary available.',
-                  };
-                });
-              }
-            });
-          }
-
+          // BallResultOverlay triggers via ref.listen now.
           // Check for match status transitions
           if (match.status == 'innings_break') {
             Future.microtask(() => context.go('/match/${widget.matchId}/break'));
@@ -173,6 +183,7 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
                                           avatarId: player?.avatarId ?? 'bat',
                                           role: 'Striker',
                                           isStriker: true,
+                                          confidence: strikerConfidence,
                                         ),
                                       );
                                     })
@@ -190,6 +201,7 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
                                             name: player?.displayName ?? 'Non-Striker',
                                             avatarId: player?.avatarId ?? 'helmet',
                                             role: 'Non-Striker',
+                                            confidence: nonStrikerConfidence,
                                           ),
                                         );
                                       })
@@ -225,6 +237,7 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
               if (_pendingOverlayData != null)
                 Positioned.fill(
                   child: BallResultOverlay(
+                    key: ValueKey(_globalLastShownBallId),
                     outcome: _pendingOverlayData!['outcome']!,
                     delivery: _pendingOverlayData!['delivery']!,
                     shot: _pendingOverlayData!['shot']!,
@@ -232,7 +245,9 @@ class _MatchLiveScreenState extends ConsumerState<MatchLiveScreen> {
                     onDismiss: () {
                       if (mounted) {
                         setState(() {
-                          _pendingOverlayData = null;
+                          if (_pendingOverlayData != null) {
+                             _pendingOverlayData = null;
+                          }
                         });
                       }
                     },

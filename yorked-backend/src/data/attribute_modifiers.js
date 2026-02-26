@@ -1,4 +1,4 @@
-function applyModifiers(baseProbs, batterAttrs, bowlerAttrs) {
+function applyModifiers(baseProbs, batterAttrs, bowlerAttrs, batterConfidence = 0, shot = null) {
     // Create a copy of baseProbs to modify
     let probs = { ...baseProbs };
 
@@ -54,6 +54,23 @@ function applyModifiers(baseProbs, batterAttrs, bowlerAttrs) {
     adjust('1', -w_var * 0.01);
     adjust('2', -w_var * 0.01);
     adjust('3', -w_var * 0.01);
+
+    // Apply Confidence Modifier
+    if (batterConfidence > 0) {
+        // Subtle boost to getting off strike as confidence grows (0 to ~15% boost max)
+        const confidenceBoost = (batterConfidence / 100.0) * 0.15;
+        adjust('1', confidenceBoost);
+        adjust('2', confidenceBoost);
+        adjust('3', confidenceBoost);
+
+        // Massive boost for power hits when absolutely cracked
+        if (batterConfidence === 100 && shot && ['Pull Shot', 'Hook Shot', 'Slog'].includes(shot)) {
+            adjust('4', 2.0); // 200% boost to 4s
+            adjust('6', 3.0); // 300% boost to 6s
+            adjust('W_CAUGHT', -0.5); // Halve the risk of getting caught
+            adjust('W_BOWLED', -0.5);
+        }
+    }
 
     // Normalize
     let total = Object.values(probs).reduce((sum, val) => sum + val, 0);

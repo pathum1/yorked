@@ -262,7 +262,13 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
                 
                 if (isCreator)
                   ElevatedButton(
-                    onPressed: isFull ? () => context.go('/match/${widget.matchId}/toss') : null,
+                    onPressed: isFull ? () async {
+                       await FirebaseFirestore.instance
+                          .collection('matches')
+                          .doc(widget.matchId)
+                          .update({'status': 'toss'});
+                       // The stream listener inside `build` will handle navigating the host
+                    } : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 48),
                       backgroundColor: Colors.amber.shade700,

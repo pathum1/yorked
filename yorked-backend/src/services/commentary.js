@@ -7,7 +7,25 @@ const SHOT_QUALITY = {
 };
 
 // Maps Delivery name to the "optimal" and "poor" shot choices against it
-const evaluateShot = (delivery, shot) => {
+const evaluateShot = (delivery, originalShot) => {
+    const shotMapping = {
+        'Drive': 'Cover Drive',
+        'Cut': 'Cut Shot',
+        'Pull': 'Pull Shot',
+        'Lofted': 'Slog',
+        'ReverseSweep': 'Sweep',
+        'Sweep': 'Sweep',
+        'Defensive': 'Defensive',
+        'Leave': 'Leave'
+    };
+    const shot = shotMapping[originalShot] || originalShot;
+
+    if (shot === 'Leave') {
+        const DANGEROUS_LEAVE = ['Yorker', 'Inswinger', 'Good Length', 'Slider', 'Arm Ball', 'Googly', 'Flipper', 'Full Toss'];
+        if (DANGEROUS_LEAVE.includes(delivery)) return SHOT_QUALITY.POOR;
+        return SHOT_QUALITY.OPTIMAL;
+    }
+
     switch (delivery) {
         case 'Yorker':
             if (['Defensive', 'Straight Drive', 'Sweep'].includes(shot)) return SHOT_QUALITY.OPTIMAL;
@@ -128,7 +146,28 @@ const getCommentary = (delivery, shot, outcome, isWicket) => {
     let group = 'DOT';
 
     if (isWicket) {
+        if (shot === 'Leave') {
+            return getRandomPhrase([
+                "He shoulders arms and... he's bowled! What a misjudgment!",
+                "Leaves the ball, and it crashes into the stumps! Disaster!",
+                "He thought it was going wide, but it swung back in. Plumb out."
+            ]);
+        }
         group = 'WICKET';
+    } else if (outcome === 'DOT' && shot === 'Leave') {
+        return getRandomPhrase([
+            "Well left outside off stump.",
+            "Shoulders arms, lets it safely through to the keeper.",
+            "Good watchful leave by the batsman.",
+            "Leaves it alone, no shot offered."
+        ]);
+    } else if (outcome === 'MISS') {
+        return getRandomPhrase([
+            "He has absolutely no idea about that delivery! Complete miss.",
+            "Swishes at thin air! What was he trying to do there?",
+            "That shot was never going to work against that delivery. Missed it by a mile.",
+            "Completely bamboozled by the bowler. Swung and missed."
+        ]);
     } else if (outcome === '4' || outcome === '6') {
         group = 'BOUNDARY';
     } else if (outcome !== 'DOT') {

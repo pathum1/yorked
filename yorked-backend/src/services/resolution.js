@@ -31,10 +31,70 @@ class ResolutionService {
         const bowlerAttrs = bowlerProfile ? bowlerProfile.attributes?.bowling : null;
         const strikerAttrs = strikerProfile ? strikerProfile.attributes?.batting : null;
 
-        const comboKey = `${delivery}|${shot}`;
-        const baseProbs = probabilityMatrix[comboKey] || probabilityMatrix['Good Length|Defensive']; // fallback
+        const shotMapping = {
+            'Drive': 'Cover Drive',
+            'Cut': 'Cut Shot',
+            'Pull': 'Pull Shot',
+            'ReverseSweep': 'Sweep',
+            'Sweep': 'Sweep',
+            'Defensive': 'Defensive',
+            'Leave': 'Leave',
+            'Lofted': 'Lofted' // Native support added
+        };
+        const mappedShot = shotMapping[shot] || shot;
 
-        let finalProbs = applyModifiers(baseProbs, strikerAttrs, bowlerAttrs);
+        const deliveryMapping = {
+            'GoodLength': 'Good Length',
+            'SlowerBall': 'Slower Ball',
+            'FullToss': 'Full Toss',
+            'HalfVolley': 'Half Volley',
+            // Default fast
+            'Yorker': 'Yorker',
+            'Bouncer': 'Bouncer',
+            'Inswinger': 'Inswinger',
+            'Outswinger': 'Outswinger',
+            // Spin
+            'Off-spin': 'Off-spin',
+            'Leg-spin': 'Leg-spin',
+            'Googly': 'Googly',
+            'Slider': 'Slider',
+            'Tossed Up': 'Tossed Up',
+            'Arm Ball': 'Arm Ball',
+            'Flipper': 'Flipper'
+        };
+        const mappedDelivery = deliveryMapping[delivery] || delivery;
+
+        const comboKey = `${mappedDelivery}|${mappedShot}`;
+
+        const UNSUITABLE_SHOTS = [
+            'Bouncer|Sweep',
+            'Bouncer|Defensive',
+            'Yorker|Pull Shot',
+            'Yorker|Hook Shot',
+            'Yorker|Cut Shot'
+        ];
+
+        let isMiss = UNSUITABLE_SHOTS.includes(comboKey);
+        let finalProbs;
+
+        let currentConfidence = 0;
+        if (innings.batsmen && innings.batsmen[strikerUid] && innings.batsmen[strikerUid].confidence !== undefined) {
+            currentConfidence = innings.batsmen[strikerUid].confidence;
+        }
+
+        if (shot === 'Leave') {
+            const DANGEROUS_LEAVE = ['Yorker', 'Inswinger', 'Good Length', 'Slider', 'Arm Ball', 'Googly', 'Flipper', 'Full Toss', 'Half Volley'];
+            if (DANGEROUS_LEAVE.includes(mappedDelivery)) {
+                finalProbs = { W_BOWLED: 50, W_LBW: 50 };
+            } else {
+                finalProbs = { DOT: 100 };
+            }
+        } else if (isMiss) {
+            finalProbs = { MISS: 100 };
+        } else {
+            const baseProbs = probabilityMatrix[comboKey] || probabilityMatrix['Good Length|Defensive']; // fallback
+            finalProbs = applyModifiers(baseProbs, strikerAttrs, bowlerAttrs, currentConfidence, mappedShot);
+        }
 
         // Weighted random selection
         let totalWeight = Object.values(finalProbs).reduce((a, b) => a + b, 0);
@@ -55,7 +115,7 @@ class ResolutionService {
         if (outcome.startsWith('W_')) {
             isWicket = true;
             wicketType = outcome.split('_')[1];
-        } else if (outcome !== 'DOT') {
+        } else if (outcome !== 'DOT' && outcome !== 'MISS') {
             runsScored = parseInt(outcome, 10);
         }
 
@@ -103,11 +163,32 @@ class ResolutionService {
 
         runs += runsScored;
 
-        if (!batsmen[currStriker]) batsmen[currStriker] = { runs: 0, balls: 0, fours: 0, sixes: 0, status: 'in' };
+        runs += runsScored;
+
+        if (!batsmen[currStriker]) batsmen[currStriker] = { runs: 0, balls: 0, fours: 0, sixes: 0, status: 'in', confidence: 0 };
         if (!bowlers[bowlerUid]) bowlers[bowlerUid] = { overs: 0, balls: 0, maidens: 0, runs: 0, wickets: 0 };
 
         batsmen[currStriker].runs += runsScored;
         batsmen[currStriker].balls += 1;
+
+        // Update Confidence
+        let confidenceChange = 0;
+        if (isWicket) {
+            confidenceChange = 0; // Doesn't matter, he's out
+        } else if (runsScored > 0) {
+            confidenceChange = runsScored * 2;
+        } else if (outcome === 'DOT') {
+            if (shot === 'Defensive' || shot === 'Leave') {
+                confidenceChange = 0; // Defensive / Leave does not reduce confidence
+            } else {
+                confidenceChange = -3;
+            }
+        } else if (outcome === 'MISS') {
+            confidenceChange = -3;
+        }
+
+        batsmen[currStriker].confidence = Math.max(0, Math.min(100, (batsmen[currStriker].confidence || 0) + confidenceChange));
+
         if (runsScored === 4) batsmen[currStriker].fours += 1;
         if (runsScored === 6) batsmen[currStriker].sixes += 1;
 
@@ -123,7 +204,7 @@ class ResolutionService {
 
         // Add to overHistory
         if (!overHistory[overs]) overHistory[overs] = [];
-        overHistory[overs].push(runsScored === 0 && !isWicket ? 'DOT' : (isWicket ? 'W' : runsScored.toString()));
+        overHistory[overs].push((outcome === 'DOT' || outcome === 'MISS') && !isWicket ? 'DOT' : (isWicket ? 'W' : runsScored.toString()));
 
         balls += 1;
         let overCompleted = false;
@@ -170,7 +251,7 @@ class ResolutionService {
             const battingTeamObj = innings.battingTeam === 'A' ? match.teamA : match.teamB;
             const nextBatUid = battingTeamObj.players.find(uid => batsmen[uid] === undefined || batsmen[uid].status === 'notyet');
             if (nextBatUid) {
-                batsmen[nextBatUid] = { runs: 0, balls: 0, fours: 0, sixes: 0, status: 'in' };
+                batsmen[nextBatUid] = { runs: 0, balls: 0, fours: 0, sixes: 0, status: 'in', confidence: 0 };
                 if (nextStriker === currStriker) nextStriker = nextBatUid;
                 else nextNonStriker = nextBatUid;
 
@@ -200,6 +281,14 @@ class ResolutionService {
                 delivery: null,
                 shot: null,
                 resolvedAt: new Date()
+            },
+            lastBall: {
+                id: new Date().getTime().toString(), // Give a pseudo id so the frontend can distinguish
+                outcome: outcome,
+                delivery: delivery,
+                shot: shot,
+                commentary: commentary,
+                resolvedAt: new Date().toISOString()
             }
         };
 

@@ -5,6 +5,7 @@ class PlayerCardWidget extends StatelessWidget {
   final String avatarId;
   final String role;
   final bool isStriker;
+  final int? confidence;
 
   const PlayerCardWidget({
     super.key,
@@ -12,6 +13,7 @@ class PlayerCardWidget extends StatelessWidget {
     required this.avatarId,
     required this.role,
     this.isStriker = false,
+    this.confidence,
   });
 
   @override
@@ -37,29 +39,50 @@ class PlayerCardWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                name,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                role.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white54,
-                  fontSize: 10,
-                  letterSpacing: 1,
-                  fontWeight: FontWeight.bold,
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  role.toUpperCase(),
+                  style: const TextStyle(
+                    color: Colors.white54,
+                    fontSize: 10,
+                    letterSpacing: 1,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
           ),
           if (isStriker) ...[
             const SizedBox(width: 16),
             const Icon(Icons.sports_cricket, color: Color(0xFF1E88E5), size: 20),
+          ],
+          if (confidence != null) ...[
+            const SizedBox(width: 16),
+            SizedBox(
+              width: 8,
+              height: 32,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: RotatedBox(
+                  quarterTurns: -1,
+                  child: LinearProgressIndicator(
+                    value: confidence! / 100.0,
+                    backgroundColor: Colors.white10,
+                    valueColor: AlwaysStoppedAnimation<Color>((confidence! == 100) ? Colors.orange : (confidence! > 50 ? Colors.green : Colors.red)),
+                  ),
+                ),
+              ),
+            ),
           ]
         ],
       ),

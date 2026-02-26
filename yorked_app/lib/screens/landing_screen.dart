@@ -5,20 +5,42 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/auth_service.dart';
 import '../providers/auth_provider.dart';
 
-class LandingScreen extends ConsumerWidget {
+class LandingScreen extends ConsumerStatefulWidget {
   const LandingScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LandingScreen> createState() => _LandingScreenState();
+}
+
+class _LandingScreenState extends ConsumerState<LandingScreen> {
+  bool _isLoading = false;
+
+  @override
+  Widget build(BuildContext context) {
 
     ref.listen(authStateProvider, (previous, next) async {
        if (next.value != null) {
           // User is authenticated
-          final profile = await ref.read(playerProfileProvider.future);
-          if (profile == null) {
-             if (context.mounted) context.go('/profile/setup');
-          } else {
-             if (context.mounted) context.go('/dashboard');
+          try {
+            final profile = await ref.read(playerProfileProvider.future);
+            if (!mounted) return;
+            
+            final uri = GoRouterState.of(context).uri;
+            final redirect = uri.queryParameters['redirect'];
+
+            if (profile == null) {
+               context.go('/profile/setup', extra: redirect);
+            } else {
+               if (redirect != null && redirect.isNotEmpty) {
+                 context.go(redirect);
+               } else {
+                 context.go('/dashboard');
+               }
+            }
+          } catch (e) {
+            if (mounted) {
+              setState(() => _isLoading = false);
+            }
           }
        }
     });
@@ -131,8 +153,13 @@ class LandingScreen extends ConsumerWidget {
                       cursor: SystemMouseCursors.click,
                       child: GestureDetector(
                         onTap: () async {
+                           if (_isLoading) return;
+                           setState(() => _isLoading = true);
                            final authService = ref.read(authServiceProvider);
-                           await authService.signInWithGoogle();
+                           final userCredential = await authService.signInWithGoogle();
+                           if (userCredential == null && mounted) {
+                              setState(() => _isLoading = false);
+                           }
                         },
                         child: Container(
                           width: 300,
@@ -152,21 +179,42 @@ class LandingScreen extends ConsumerWidget {
                               )
                             ],
                           ),
-                          child: const Row(
+                          child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.login, color: Colors.white),
-                              SizedBox(width: 12),
-                              Text(
-                                'CONTINUE WITH GOOGLE',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                  letterSpacing: 1.5,
-                                ),
-                              ),
-                            ],
+                            children: _isLoading
+                                ? const [
+                                    SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'LOGGING IN...',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ]
+                                : const [
+                                    Icon(Icons.login, color: Colors.white),
+                                    SizedBox(width: 12),
+                                    Text(
+                                      'CONTINUE WITH GOOGLE',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        letterSpacing: 1.5,
+                                      ),
+                                    ),
+                                  ],
                           ),
                         ),
                       ),

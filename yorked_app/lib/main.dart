@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 import '../firebase_options.dart';
 import 'screens/screens.dart';
@@ -42,9 +43,28 @@ class YorkedApp extends ConsumerWidget {
   }
 }
 
+class AuthNotifier extends ChangeNotifier {
+  AuthNotifier() {
+    FirebaseAuth.instance.authStateChanges().listen((_) {
+      notifyListeners();
+    });
+  }
+}
+
+final _authNotifier = AuthNotifier();
+
 // Basic GoRouter setup
 final _router = GoRouter(
   initialLocation: '/',
+  refreshListenable: _authNotifier,
+  redirect: (context, state) {
+    if (FirebaseAuth.instance.currentUser == null) {
+      if (state.uri.path != '/') {
+        return '/?redirect=${Uri.encodeComponent(state.uri.toString())}';
+      }
+    }
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',
