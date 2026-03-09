@@ -1,4 +1,8 @@
-yorked-backend/secrets/
-# Ignore secrets
-secrets/
+node_modules/
+data/
+*.db
+*.db-shm
+*.db-wal
 .env
+dist/
+.DS_Store
