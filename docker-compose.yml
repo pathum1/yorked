@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: yorked-v2-backend
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - yorked-v2-data:/app/data
+    env_file:
+      - .env
+    restart: unless-stopped
+
+volumes:
+  yorked-v2-data:
+    name: yorked-v2-data
